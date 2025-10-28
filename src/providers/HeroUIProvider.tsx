@@ -1,6 +1,11 @@
 import { HeroUIProvider } from '@heroui/react';
+import type { ReactNode } from 'react';
 
-export default function Provider({ children }: { children: React.ReactNode }) {
+interface ProviderProps {
+  children: ReactNode;
+}
+
+export default function Provider({ children }: ProviderProps) {
   return (
     <HeroUIProvider>
       {children}
