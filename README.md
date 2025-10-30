@@ -1,132 +1,53 @@
-# Astro Starter Kit: Minimal
+# Next.js & HeroUI Template
 
-```sh
-npm create astro@latest -- --template minimal
+This is a template for creating applications using Next.js 14 (app directory) and HeroUI (v2).
+
+[Try it on CodeSandbox](https://githubbox.com/heroui-inc/heroui/next-app-template)
+
+## Technologies Used
+
+- [Next.js 14](https://nextjs.org/docs/getting-started)
+- [HeroUI v2](https://heroui.com/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [Tailwind Variants](https://tailwind-variants.org)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Framer Motion](https://www.framer.com/motion/)
+- [next-themes](https://github.com/pacocoursey/next-themes)
+
+## How to Use
+
+### Use the template with create-next-app
+
+To create a new project based on this template using `create-next-app`, run the following command:
+
+```bash
+npx create-next-app -e https://github.com/heroui-inc/next-app-template
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+### Install dependencies
 
-## 🚀 Project Structure
+You can use one of them `npm`, `yarn`, `pnpm`, `bun`, Example using `npm`:
 
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-src/
-├── components/
-│   ├── ui/                 # Componentes base de HeroUI
-│   │   ├── Button.astro
-│   │   ├── Card.astro
-│   │   └── ...
-│   ├── layout/             # Componentes de layout
-│   │   ├── Header.astro
-│   │   ├── Footer.astro
-│   │   ├── Sidebar.astro
-│   │   └── Navigation.astro
-│   ├── sections/           # Secciones reutilizables
-│   │   ├── Hero.astro
-│   │   ├── Features.astro
-│   │   ├── Testimonials.astro
-│   │   └── CTA.astro
-│   └── shared/             # Componentes compartidos
-│       ├── Logo.astro
-│       ├── Icon.astro
-│       └── Badge.astro
-├── islands/                # Componentes interactivos (React)
-│   ├── ui/                 # Componentes UI interactivos
-│   │   ├── SearchBar.tsx
-│   │   ├── DropdownMenu.tsx
-│   │   ├── Modal.tsx
-│   │   └── Tabs.tsx
-│   ├── forms/              # Formularios interactivos
-│   │   ├── ContactForm.tsx
-│   │   ├── Newsletter.tsx
-│   │   ├── MultiStepForm.tsx
-│   │   └── SearchFilter.tsx
-│   ├── features/           # Funcionalidades específicas
-│   │   ├── ShoppingCart.tsx
-│   │   ├── UserProfile.tsx
-│   │   ├── ImageGallery.tsx
-│   │   └── LiveSearch.tsx
-│   └── utils/              # Utilidades para islands
-│       ├── hooks/
-│       │   ├── useLocalStorage.ts
-│       │   ├── useApi.ts
-│       │   └── useTheme.ts
-│       └── context/
-│           ├── CartContext.tsx
-│           ├── AuthContext.tsx
-│           └── ThemeContext.tsx
-├── layouts/                # Layouts de página
-│   ├── BaseLayout.astro
-│   ├── BlogLayout.astro
-│   ├── DashboardLayout.astro
-│   └── AdminLayout.astro
-├── pages/                  # Rutas de la aplicación
-│   ├── index.astro
-│   ├── about.astro
-│   ├── blog/
-│   │   ├── index.astro
-│   │   ├── [slug].astro
-│   │   └── category/
-│   │       └── [category].astro
-│   ├── products/
-│   │   ├── index.astro
-│   │   ├── [id].astro
-│   │   └── category/
-│   │       └── [category].astro
-│   └── api/                # Endpoints de API
-│       ├── contact.json.ts
-│       └── search.json.ts
-├── content/                # Contenido con Content Collections
-│   ├── blog/
-│   │   ├── post-1.md
-│   │   ├── post-2.md
-│   │   └── config.ts
-│   ├── products/
-│   │   ├── product-1.md
-│   │   ├── product-2.md
-│   │   └── config.ts
-│   └── config.ts
-├── styles/                 # Estilos globales y utilities
-│   ├── globals.css
-│   ├── variables.css
-│   ├── components.css
-│   └── utilities.css
-├── utils/                  # Utilidades de JavaScript/TypeScript
-│   ├── helpers.ts
-│   ├── formatters.ts
-│   ├── constants.ts
-│   └── validations.ts
-├── stores/                 # Stores de estado (Zustand, Nano Stores, etc.)
-│   ├── authStore.ts
-│   ├── uiStore.ts
-│   └── cartStore.ts
-└── types/                  # Definiciones de TypeScript
-    ├── global.d.ts
-    ├── content.ts
-    ├── api.ts
-    └── components.ts
+```bash
+npm install
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+### Run the development server
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+```bash
+npm run dev
+```
 
-Any static assets, like images, can be placed in the `public/` directory.
+### Setup pnpm (optional)
 
-## 🧞 Commands
+If you are using `pnpm`, you need to add the following code to your `.npmrc` file:
 
-All commands are run from the root of the project, from a terminal:
+```bash
+public-hoist-pattern[]=*@heroui/*
+```
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+After modifying the `.npmrc` file, you need to run `pnpm install` again to ensure that the dependencies are installed correctly.
 
-## 👀 Want to learn more?
+## License
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+Licensed under the [MIT license](https://github.com/heroui-inc/next-app-template/blob/main/LICENSE).

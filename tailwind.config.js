@@ -1,13 +1,22 @@
-import { heroui } from "@heroui/react";
+import {heroui} from "@heroui/theme"
 
-export default {
+/** @type {import('tailwindcss').Config} */
+const config = {
   content: [
-    './src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}',
-    './node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}'
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+    "./node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}"
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ["var(--font-sans)"],
+        mono: ["var(--font-mono)"],
+      },
+    },
   },
   darkMode: "class",
   plugins: [heroui()],
 }
+
+module.exports = config;
