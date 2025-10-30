@@ -27,7 +27,7 @@ export default function Home() {
               variant="shadow"
               className="font-semibold px-8"
             >
-              Explorar Catálogo
+              Iniciar Sesión
             </Button>
             <Button
               size="lg"
