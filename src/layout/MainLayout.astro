@@ -1,0 +1,29 @@
+---
+import { siteInfo } from "../consts/site-info";
+import Provider from "../providers/HeroUIProvider";
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description=siteInfo.description } = Astro.props;
+---
+
+<html lang="es">
+  <meta>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/book-outline.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title}</title>
+    <meta name="description" content={description}/>
+    <meta name="author" content="Bookitech"/>
+    
+  </head>
+  <body>
+    <Provider client:load>
+      <slot />
+    </Provider>
+  </body>
+</html>

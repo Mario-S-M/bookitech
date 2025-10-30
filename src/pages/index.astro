@@ -1,19 +1,8 @@
 ---
-import Provider from "../providers/HeroUIProvider";
-import "../styles/global.css";
-import { Button } from '@heroui/react';
+import { Button } from "@heroui/react";
+import MainLayout from "../layout/MainLayout.astro";
 ---
 
-<html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width" />
-    <title>Bookitech</title>
-  </head>
-  <body>
-    <Provider client:load>
-      <Button color="primary" client:visible>Mi botón</Button>
-    </Provider>
-  </body>
-</html>
+<MainLayout title="Página principal">
+  <Button client:only>Hola</Button>
+</MainLayout>
