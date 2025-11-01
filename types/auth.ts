@@ -51,3 +51,14 @@ export interface ForgotPasswordResponse {
 export interface LogoutResponse {
   success: boolean;
 }
+
+// Verificación de cuenta
+export interface VerifyAccountRequest {
+  id: number;
+  codigo: number;
+}
+
+export interface VerifyAccountResponse {
+  success: boolean;
+  message: string;
+}

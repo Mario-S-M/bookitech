@@ -9,6 +9,7 @@ import type {
   ForgotPasswordRequest,
   ForgotPasswordResponse,
   LogoutResponse,
+  VerifyAccountResponse,
 } from "@/types/auth";
 
 const API_BASE_URL =
@@ -32,8 +33,6 @@ export async function loginAction(
     formData.append("correo", credentials.correo);
     formData.append("contrasena", credentials.contrasena);
 
-    console.log("🔄 Enviando login a:", `${API_BASE_URL}/usuario/login`);
-
     const response = await fetch(`${API_BASE_URL}/usuario/login`, {
       method: "POST",
       headers: {
@@ -44,16 +43,12 @@ export async function loginAction(
       cache: "no-store",
     });
 
-    console.log("📡 Response status:", response.status);
-    console.log("📡 Response ok:", response.ok);
-
     let data: any = {};
     try {
       data = await response.json();
     } catch (e) {
       console.warn("⚠️ No se pudo parsear JSON de login");
     }
-    console.log("📦 Data recibida:", JSON.stringify(data, null, 2));
 
     // La API puede retornar 200 aunque haya error, verificar el contenido
     // Si la respuesta tiene un campo de error o no tiene usuario, es un error
@@ -90,10 +85,11 @@ export async function loginAction(
       };
     }
 
-    // Si hay token, guardarlo en cookies
-    if (data.token) {
-      const cookieStore = await cookies();
-      cookieStore.set("auth-token", data.token, {
+    // Si hay token, guardarlo en cookies; si no, usar el id de usuario como token temporal
+    const cookieStore = await cookies();
+    const tokenValue = data.token || String(data.usuario?.id || "");
+    if (tokenValue) {
+      cookieStore.set("auth-token", tokenValue, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
@@ -101,7 +97,39 @@ export async function loginAction(
       });
     }
 
-    console.log("✅ Login exitoso");
+    // Guardar también el user-id explícito para llamadas que requieran el idUsuario
+    if (data.usuario?.id) {
+      cookieStore.set("user-id", String(data.usuario.id), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+    }
+
+    // Guardar nombre y correo para mostrar en el avatar del dashboard
+    const userName: string | undefined =
+      data.usuario?.nombre ||
+      data.usuario?.nombre_completo ||
+      data.usuario?.name;
+    const userEmail: string | undefined =
+      data.usuario?.correo || data.usuario?.email;
+    if (userName) {
+      cookieStore.set("user-name", String(userName), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+    }
+    if (userEmail) {
+      cookieStore.set("user-email", String(userEmail), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+    }
 
     return {
       success: true,
@@ -154,9 +182,6 @@ export async function registerAction(
 
     let lastErrorMessage = "";
     for (const attempt of attempts) {
-      console.log(
-        `🔄 Intento registro -> URL: ${attempt.url} | accion: ${attempt.accion ?? "(sin accion)"}`
-      );
       const response = await fetch(attempt.url, {
         method: "POST",
         headers: {
@@ -167,16 +192,12 @@ export async function registerAction(
         cache: "no-store",
       });
 
-      console.log("📡 Response status:", response.status, "para", attempt.url);
-      console.log("📡 Response ok:", response.ok);
-
       let data: any = {};
       try {
         data = await response.json();
       } catch (e) {
         console.warn("⚠️ No se pudo parsear JSON de registro en", attempt.url);
       }
-      console.log("📦 Data recibida:", JSON.stringify(data, null, 2));
 
       if (response.ok && !data.error) {
         // Éxito
@@ -238,6 +259,9 @@ export async function logoutAction(): Promise<LogoutResponse> {
   try {
     const cookieStore = await cookies();
     cookieStore.delete("auth-token");
+    cookieStore.delete("user-id");
+    cookieStore.delete("user-name");
+    cookieStore.delete("user-email");
 
     return {
       success: true,
@@ -248,6 +272,19 @@ export async function logoutAction(): Promise<LogoutResponse> {
       success: false,
     };
   }
+}
+
+/**
+ * Obtener el perfil básico del usuario desde cookies (nombre y correo)
+ */
+export async function getUserProfileFromCookies(): Promise<{
+  name: string | null;
+  email: string | null;
+}> {
+  const cookieStore = await cookies();
+  const name = cookieStore.get("user-name")?.value || null;
+  const email = cookieStore.get("user-email")?.value || null;
+  return { name, email };
 }
 
 /**
@@ -271,12 +308,6 @@ export async function forgotPasswordAction(
     // Crear FormData para enviar los datos
     const formData = new FormData();
     formData.append("correo", correo);
-
-    console.log(
-      "🔄 Enviando recuperación de contraseña a:",
-      `${API_BASE_URL}/usuario/recuperar`
-    );
-
     const response = await fetch(`${API_BASE_URL}/usuario/recuperar`, {
       method: "POST",
       headers: {
@@ -287,16 +318,12 @@ export async function forgotPasswordAction(
       cache: "no-store",
     });
 
-    console.log("📡 Response status:", response.status);
-    console.log("📡 Response ok:", response.ok);
-
     let data: any = {};
     try {
       data = await response.json();
     } catch (e) {
       console.warn("⚠️ No se pudo parsear JSON de recuperación");
     }
-    console.log("📦 Data recibida:", JSON.stringify(data, null, 2));
 
     if (!response.ok || data.error) {
       return {
@@ -328,6 +355,69 @@ export async function forgotPasswordAction(
     };
   } catch (error) {
     console.error("❌ Error en forgotPasswordAction:", error);
+    return {
+      success: false,
+      message: "Error de conexión. Por favor, intenta nuevamente.",
+    };
+  }
+}
+
+/**
+ * Server Action para verificar cuenta
+ * @param id - ID del usuario
+ * @param codigo - Código OTP de verificación
+ */
+export async function verifyAccountAction(
+  id: number,
+  codigo: number
+): Promise<VerifyAccountResponse> {
+  try {
+    const formData = new FormData();
+    formData.append("id", String(id));
+    formData.append("codigo", String(codigo));
+
+    const response = await fetch(`${API_BASE_URL}/usuario/verificar`, {
+      method: "POST",
+      headers: {
+        Authorization: AUTH_HEADER,
+        Accept: "application/json",
+      },
+      body: formData,
+      cache: "no-store",
+    });
+
+    let data: any = {};
+    try {
+      data = await response.json();
+    } catch (e) {
+      console.warn("⚠️ No se pudo parsear JSON de verificación");
+    }
+
+    if (!response.ok || data.error) {
+      const message =
+        data.mensaje ||
+        data.message ||
+        data.error ||
+        (response.status === 401
+          ? "El token de acceso es inválido"
+          : response.status === 405
+            ? "Método no permitido"
+            : response.status === 404
+              ? "Endpoint no encontrado"
+              : response.status === 400
+                ? "Error en la petición"
+                : response.status === 409
+                  ? "Fallo en la conexión con la base de datos"
+                  : "Error al verificar cuenta");
+      return { success: false, message };
+    }
+
+    return {
+      success: true,
+      message: data.mensaje || data.message || "Verificación exitosa",
+    };
+  } catch (error) {
+    console.error("❌ Error en verifyAccountAction:", error);
     return {
       success: false,
       message: "Error de conexión. Por favor, intenta nuevamente.",

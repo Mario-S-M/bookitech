@@ -1,5 +1,11 @@
 "use client";
-import { forwardRef, useImperativeHandle, useRef, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
@@ -18,12 +24,17 @@ import {
   ForgotPasswordModal,
   type ForgotPasswordModalHandle,
 } from "./ForgotPasswordModal";
+import { VerifyAccount, type VerifyAccountModalHandle } from "./VerifyAccount";
 import { loginAction } from "@/app/actions/auth";
+import { Form } from "@heroui/react";
+import { useRouter } from "next/navigation";
 
 export type LoginModalHandle = {
   open: () => void;
   close: () => void;
+  reset: () => void;
 };
+
 type Props = {
   hideTrigger?: boolean;
 };
@@ -31,27 +42,53 @@ type Props = {
 export const LoginModal = forwardRef<LoginModalHandle, Props>(
   ({ hideTrigger = false }, ref) => {
     const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure();
+    const router = useRouter();
     const [isVisible, setIsVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [emailError, setEmailError] = useState("");
+    const [passwordError, setPasswordError] = useState("");
     const [alertMessage, setAlertMessage] = useState<{
       type: "warning" | "danger" | "success";
       title: string;
       description: string;
     } | null>(null);
+    const [unverifiedUserId, setUnverifiedUserId] = useState<number | null>(
+      null
+    );
     const registerRef = useRef<RegisterModalHandle>(null);
     const forgotPasswordRef = useRef<ForgotPasswordModalHandle>(null);
+    const verifyAccountRef = useRef<VerifyAccountModalHandle>(null);
+
+    const resetForm = () => {
+      setEmail("");
+      setPassword("");
+      setEmailError("");
+      setPasswordError("");
+      setAlertMessage(null);
+      setIsVisible(false);
+      setIsLoading(false);
+    };
 
     useImperativeHandle(
       ref,
       () => ({
         open: onOpen,
         close: onClose,
+        reset: resetForm,
       }),
       [onOpen, onClose]
     );
+
+    // Prefetch dashboard for instant navigation after login
+    useEffect(() => {
+      // Best-effort prefetch; ignore errors silently
+      try {
+        router.prefetch("/dashboard");
+      } catch {}
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const toggleVisibility = () => setIsVisible(!isVisible);
 
@@ -62,22 +99,36 @@ export const LoginModal = forwardRef<LoginModalHandle, Props>(
 
     const handleEmailChange = (value: string) => {
       setEmail(value);
-      if (value && !validateEmail(value)) {
+      if (!value) {
+        setEmailError("El correo es obligatorio");
+        return;
+      }
+      if (!validateEmail(value)) {
         setEmailError("Por favor, ingresa un correo electrónico válido");
       } else {
         setEmailError("");
       }
     };
 
+    const handlePasswordChange = (value: string) => {
+      setPassword(value);
+      if (!value) {
+        setPasswordError("La contraseña es obligatoria");
+      } else {
+        setPasswordError("");
+      }
+    };
+
     const handleLogin = async () => {
-      // Limpiar alerta anterior
       setAlertMessage(null);
 
       if (!email || !password) {
+        if (!email) setEmailError("El correo es obligatorio");
+        if (!password) setPasswordError("La contraseña es obligatoria");
         setAlertMessage({
           type: "danger",
           title: "Campos incompletos",
-          description: "Por favor, completa todos los campos",
+          description: "Por favor completa todos los campos",
         });
         return;
       }
@@ -92,6 +143,7 @@ export const LoginModal = forwardRef<LoginModalHandle, Props>(
         return;
       }
 
+      setPasswordError("");
       setIsLoading(true);
 
       try {
@@ -101,7 +153,17 @@ export const LoginModal = forwardRef<LoginModalHandle, Props>(
         });
 
         if (result.needsVerification) {
-          // Usuario no verificado
+          const idCandidate = (result.user?.id ?? null) as unknown as
+            | string
+            | number
+            | null;
+          const parsedId =
+            typeof idCandidate === "string"
+              ? parseInt(idCandidate, 10)
+              : (idCandidate as number | null);
+          setUnverifiedUserId(
+            parsedId && !Number.isNaN(parsedId) ? parsedId : null
+          );
           setAlertMessage({
             type: "warning",
             title: "Usuario sin verificar",
@@ -114,7 +176,6 @@ export const LoginModal = forwardRef<LoginModalHandle, Props>(
         }
 
         if (!result.success) {
-          // Error en el login
           setAlertMessage({
             type: "danger",
             title: "Error al iniciar sesión",
@@ -124,23 +185,14 @@ export const LoginModal = forwardRef<LoginModalHandle, Props>(
           return;
         }
 
-        // Login exitoso - mostrar mensaje de éxito brevemente
-        setAlertMessage({
-          type: "success",
-          title: "¡Bienvenido!",
-          description: result.message || `Hola ${result.user?.nombre || ""}`,
-        });
-
-        console.log("✅ Usuario logueado:", result.user);
-
-        // Limpiar formulario y cerrar modal después de un breve delay
-        setTimeout(() => {
-          setEmail("");
-          setPassword("");
-          setEmailError("");
-          setAlertMessage(null);
-          onClose();
-        }, 1500);
+        // Éxito: limpiar y redirigir inmediatamente
+        setEmail("");
+        setPassword("");
+        setEmailError("");
+        setAlertMessage(null);
+        // Cerrar el modal y navegar de inmediato; replace evita volver al login
+        onClose();
+        router.replace("/dashboard");
       } catch (error) {
         console.error("Error en handleLogin:", error);
         setAlertMessage({
@@ -148,15 +200,16 @@ export const LoginModal = forwardRef<LoginModalHandle, Props>(
           title: "Error de conexión",
           description: "Error inesperado. Por favor, intenta nuevamente.",
         });
-        setIsLoading(false);
       } finally {
-        setIsLoading(false);
+        // Evitar parpadeos: dejamos el loading hasta que el router navegue
+        setTimeout(() => setIsLoading(false), 200);
       }
     };
 
     const loginModalRef = useRef<LoginModalHandle>({
       open: onOpen,
       close: onClose,
+      reset: resetForm,
     });
 
     return (
@@ -174,83 +227,127 @@ export const LoginModal = forwardRef<LoginModalHandle, Props>(
                   Iniciar Sesión
                 </ModalHeader>
                 <ModalBody>
-                  {alertMessage && (
-                    <Alert
-                      color={alertMessage.type}
-                      title={alertMessage.title}
-                      description={alertMessage.description}
-                      variant="flat"
+                  {alertMessage &&
+                    (alertMessage.type === "warning" ? (
+                      <Alert
+                        color="warning"
+                        title={alertMessage.title}
+                        description={alertMessage.description}
+                        variant="faded"
+                        endContent={
+                          <Button
+                            color="warning"
+                            size="sm"
+                            variant="flat"
+                            onPress={() => {
+                              handleClose();
+                              setTimeout(
+                                () => verifyAccountRef.current?.open(),
+                                150
+                              );
+                            }}
+                          >
+                            Verificar
+                          </Button>
+                        }
+                      />
+                    ) : (
+                      <Alert
+                        color={alertMessage.type}
+                        title={alertMessage.title}
+                        description={alertMessage.description}
+                        variant="flat"
+                      />
+                    ))}
+                  <Form
+                    id="login-form"
+                    className="flex flex-col gap-4"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleLogin();
+                    }}
+                  >
+                    <Input
+                      endContent={
+                        <Mail className="text-2xl text-default-400 pointer-events-none shrink-0" />
+                      }
+                      errorMessage={emailError}
+                      isInvalid={!!emailError}
+                      label="Correo Electrónico"
+                      type="email"
+                      name="email"
+                      value={email}
+                      variant="bordered"
+                      onValueChange={handleEmailChange}
                     />
-                  )}
-                  <Input
-                    endContent={
-                      <Mail className="text-2xl text-default-400 pointer-events-none shrink-0" />
-                    }
-                    errorMessage={emailError}
-                    isInvalid={!!emailError}
-                    label="Correo Electrónico"
-                    placeholder="correo@ejemplo.com"
-                    type="email"
-                    value={email}
-                    variant="bordered"
-                    onValueChange={handleEmailChange}
-                  />
-                  <Input
-                    endContent={
+                    <Input
+                      endContent={
+                        <button
+                          aria-label="toggle password visibility"
+                          className="focus:outline-solid outline-transparent"
+                          type="button"
+                          onClick={toggleVisibility}
+                        >
+                          {isVisible ? (
+                            <EyeOff className="text-2xl text-default-400 pointer-events-none" />
+                          ) : (
+                            <Eye className="text-2xl text-default-400 pointer-events-none" />
+                          )}
+                        </button>
+                      }
+                      errorMessage={passwordError}
+                      isInvalid={!!passwordError}
+                      label="Contraseña"
+                      type={isVisible ? "text" : "password"}
+                      name="password"
+                      value={password}
+                      variant="bordered"
+                      onValueChange={handlePasswordChange}
+                    />
+                    <div className="flex py-2 px-1 justify-between">
                       <button
-                        aria-label="toggle password visibility"
-                        className="focus:outline-solid outline-transparent"
                         type="button"
-                        onClick={toggleVisibility}
+                        className="text-primary cursor-pointer hover:underline text-sm"
+                        onClick={() => {
+                          handleClose();
+                          setTimeout(
+                            () => forgotPasswordRef.current?.open(),
+                            150
+                          );
+                        }}
                       >
-                        {isVisible ? (
-                          <EyeOff className="text-2xl text-default-400 pointer-events-none" />
-                        ) : (
-                          <Eye className="text-2xl text-default-400 pointer-events-none" />
-                        )}
+                        ¿Olvidaste tu contraseña?
                       </button>
-                    }
-                    label="Contraseña"
-                    placeholder="Ingresa tu contraseña"
-                    type={isVisible ? "text" : "password"}
-                    value={password}
-                    variant="bordered"
-                    onValueChange={setPassword}
-                  />
-                  <div className="flex py-2 px-1 justify-between">
-                    <button
-                      type="button"
-                      className="text-primary cursor-pointer hover:underline text-sm"
-                      onClick={() => {
-                        handleClose();
-                        setTimeout(
-                          () => forgotPasswordRef.current?.open(),
-                          150
-                        );
-                      }}
-                    >
-                      ¿Olvidaste tu contraseña?
-                    </button>
-                  </div>
-                  <div className="flex justify-between">
+                    </div>
+                  </Form>
+                </ModalBody>
+                <ModalFooter className="flex flex-col gap-2">
+                  <div className="flex w-full justify-between">
                     <Button
                       color="danger"
                       variant="flat"
                       onPress={handleClose}
                       isDisabled={isLoading}
+                      type="button"
                     >
                       Cancelar
                     </Button>
                     <Button
                       color="primary"
-                      onPress={handleLogin}
                       isLoading={isLoading}
+                      type="submit"
+                      form="login-form"
+                      onPress={() => {
+                        // fallback for button click (for some UI libraries)
+                        const form = document.getElementById(
+                          "login-form"
+                        ) as HTMLFormElement | null;
+                        if (form) form.requestSubmit();
+                      }}
                     >
                       Iniciar Sesión
                     </Button>
                   </div>
-                </ModalBody>
-                <ModalFooter>
                   <div className="w-full flex justify-center items-center gap-2">
                     ¿No tienes cuenta?
                     <button
@@ -277,6 +374,12 @@ export const LoginModal = forwardRef<LoginModalHandle, Props>(
         <ForgotPasswordModal
           ref={forgotPasswordRef}
           loginModalRef={loginModalRef}
+          hideTrigger
+        />
+        <VerifyAccount
+          ref={verifyAccountRef}
+          loginModalRef={loginModalRef}
+          userId={unverifiedUserId ?? undefined}
           hideTrigger
         />
       </>

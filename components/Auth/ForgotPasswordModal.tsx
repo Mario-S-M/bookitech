@@ -54,7 +54,11 @@ export const ForgotPasswordModal = forwardRef<ForgotPasswordModalHandle, Props>(
     const handleEmailChange = (value: string) => {
       setEmail(value);
       setAlertMessage(null); // Limpiar mensaje al escribir
-      if (value && !validateEmail(value)) {
+      if (!value) {
+        setEmailError("El correo es obligatorio");
+        return;
+      }
+      if (!validateEmail(value)) {
         setEmailError("Por favor, ingresa un correo electrónico válido");
       } else {
         setEmailError("");
@@ -73,10 +77,11 @@ export const ForgotPasswordModal = forwardRef<ForgotPasswordModalHandle, Props>(
       setAlertMessage(null);
 
       if (!email) {
+        setEmailError("El correo es obligatorio");
         setAlertMessage({
           type: "danger",
-          title: "Campo requerido",
-          description: "Por favor, ingresa tu correo electrónico",
+          title: "Campos incompletos",
+          description: "Por favor completa todos los campos",
         });
         return;
       }
@@ -175,7 +180,6 @@ export const ForgotPasswordModal = forwardRef<ForgotPasswordModalHandle, Props>(
                     errorMessage={emailError}
                     isInvalid={!!emailError}
                     label="Correo Electrónico"
-                    placeholder="correo@ejemplo.com"
                     variant="bordered"
                     type="email"
                     value={email}
